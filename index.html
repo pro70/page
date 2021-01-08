@@ -9,9 +9,9 @@
 
         <style>
             html, body {
-                min-width: 100%;
-                min-height: 100%;
                 background-color: #111111;
+
+                padding-top: 30px;
 
                 display: flex;
                 flex-direction: column;
@@ -22,16 +22,6 @@
             #container {
                 background-color: black;
                 color: lightgray;
-
-
-                width: 95%;
-                height: 100%;
-                padding: 30px;
-
-                display: flex;
-                flex-direction: row;
-                justify-content: center;
-                align-items: center;
             }
 
             #input {
@@ -48,19 +38,22 @@
                 z-index: 10;
             }
 
+            #input:focus {
+                border: 1px solid lightgray;
+                outline: none;
+            }
+
             #content {
                 background-color: transparent;
                 color: green;
 
-                overflow: visible;
-                
-                word-wrap: break-word;
+                overflow: hidden;
+
+                padding: 10px;
 
                 position: absolute;
-                top: 100px;
-                left: 100px;
-                width: 100px;
-                height: 100px;
+                width: 50%;
+                height: 200px;
 
                 font-family: 'Courier New', Courier, monospace;
 
@@ -89,7 +82,7 @@
 
         <script>
             const LINE_LENGTH = 78;
-            const ROWS = 40;
+            const ROWS = 30;
 
             const lineColorEven = "rgba(255, 255, 255, .1)";
             const lineColorOdd = "transparent";
@@ -110,6 +103,14 @@
 
                 const input = document.getElementById("input");
                 input.onkeypress = keyHandler
+                input.onkeydown = function(e) {
+                    console.log(e);
+                }
+                input.onblur = function() {
+                    const input = document.getElementById("input");
+                    input.focus();
+                }
+                input.focus();
 
                 const output = document.getElementById("content");
                 for(var i=0; i<ROWS; i++) {
@@ -136,19 +137,99 @@
                     rows.push(row); 
                 }
 
-                const events = new EventSource('/contentUpdate');
+                const events = new EventSource('/api/contentUpdate');
 	            events.addEventListener('UPDATE_ROW', (e) => {
-                    console.log(e);
+                    const data = JSON.parse(e.data);
+                    updateLine(data)
             	}, false);
                 events.addEventListener('UPDATE_ALL', (e) => {
-                    console.log(e);
-            	}, false);
+                    const data = JSON.parse(e.data);
+                    updateAll(data);                    
+                }, false);
+
+                fetch("/api/content", {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    method: "GET"
+                }).then((response) => {
+                    response.text().then(function(text) {
+                        const data = JSON.parse(text);
+                        if (data.length > 0) {
+                            updateAll(data);
+                        }
+                    });
+                }).catch((error) => {
+                    console.log("Key press error", error);
+                });
             }
 
             window.onresize = function() {
                 calcFontSize();
             }
 
+
+            function updateLine(data) {
+                if (data.length == 0) {
+                    clearLine();
+                    return;
+                }  
+
+                var newLines = lineToLines(data);
+
+                if (newLines.length == 1) {
+                    currentLine = newLines[0];
+                    lines[lines.length - 1] = newLines[0];
+                    render(false);
+                } else {
+                    var oldLines = lines.slice(0, lines.length - 1);
+                    newLines = oldLines.concat(newLines);
+                    updateLines(newLines);
+                }
+            } 
+
+            function clearLine() {
+                var l = new Object();
+                l.prompt = true;
+                l.data = [];
+                currentLine = l;
+                lines[lines.length - 1] = l;
+                render(false);
+            }
+
+            function updateAll(data) {
+                var newLines = [];
+                for(line of data) {
+                    newLines = newLines.concat(lineToLines(line));
+                }
+                updateLines(newLines);
+            }
+
+            function lineToLines(data) {
+                var newLines = [];
+                var first = true;
+                do {
+                    var l = new Object();
+                    l.prompt = first;
+                    l.data = data.slice(0, LINE_LENGTH);
+                    newLines.push(l);
+                    
+                    data = data.slice(LINE_LENGTH);
+                    first = false;
+                } while(data.length > 0);
+                return newLines;
+            }
+
+            function updateLines(newLines) {
+                if (newLines.length > ROWS) {
+                    newLines = newLines.slice(newLines.length - ROWS);
+                }
+                
+                lines = newLines;
+                currentLine = lines[lines.length - 1];
+                render(true);
+            }
 
             function calcFontSize() {
                 const input = document.getElementById("input");
@@ -168,12 +249,13 @@
                 const rect = input.getBoundingClientRect();
 
                 var content = document.getElementById("content");
-                content.style.top = (rect.top + 10) + "px";
-                content.style.left = (rect.left + 10) + "px";
                 content.style.width = (rect.width - 20) + "px";
                 content.style.height = (rect.height - 20) + "px";
 
                 content.style.fontSize = input.style.fontSize;
+
+                console.log("Update content position", rect);
+
             }
 
             function render(full = true) {
@@ -203,8 +285,8 @@
                     
                     for(var j=0; j<LINE_LENGTH; j++) {
                         if(line.data.length > j) {
-                            row[j].textContent = line.data[j].key;
-                            row[j].style.color = line.data[j].color;
+                            row[j].textContent = line.data[j].Key;
+                            row[j].style.color = line.data[j].Color;
                         } else {
                             row[j].textContent = "";
                         }
@@ -226,11 +308,11 @@
 
                     const key = e.key;
                     const character = new Object();
-                    character.key = key;
-                    character.color = myColor;
+                    character.Key = key;
+                    character.Color = myColor;
                     currentLine.data.push(character);
 
-                    pushEvent(key);
+                    pushEvent(character);
                 }
 
                 render(fullRender);
@@ -262,7 +344,7 @@
             }
 
             function pushEvent(data) {
-                fetch("/keyPress", {
+                fetch("/api/keyPress", {
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
@@ -276,9 +358,10 @@
         </script>
     </head>
     <body>
-        <div id="content"></div>
         <div id="container">
-            <textarea id="input" rows="40" cols="80" wrap="soft"></textarea>
+            <div id="content"></div>
+            <textarea id="input" rows="30" cols="80" wrap="soft"></textarea>
         </div>
     </body>
 </html>
+
