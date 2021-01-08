@@ -136,6 +136,13 @@
                     rows.push(row); 
                 }
 
+                const events = new EventSource('/contentUpdate');
+	            events.addEventListener('UPDATE_ROW', (e) => {
+                    console.log(e);
+            	}, false);
+                events.addEventListener('UPDATE_ALL', (e) => {
+                    console.log(e);
+            	}, false);
             }
 
             window.onresize = function() {
@@ -167,8 +174,6 @@
                 content.style.height = (rect.height - 20) + "px";
 
                 content.style.fontSize = input.style.fontSize;
-
-                console.log("Update content position to:", rect);
             }
 
             function render(full = true) {
@@ -208,8 +213,6 @@
             }
 
             function keyHandler(e) {
-                console.log("Key:", e);
-                
                 var fullRender = false;
 
                 if(e.keyCode == 13) {
@@ -226,6 +229,8 @@
                     character.key = key;
                     character.color = myColor;
                     currentLine.data.push(character);
+
+                    pushEvent(key);
                 }
 
                 render(fullRender);
@@ -250,6 +255,23 @@
                 if (lines.length > ROWS) {
                     lines = lines.slice(lines.length - ROWS);
                 }
+
+                const event = new Object();
+                event.key = "\n";
+                pushEvent(event);
+            }
+
+            function pushEvent(data) {
+                fetch("/keyPress", {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    method: "POST",
+                    body: JSON.stringify(data)
+                }).catch((error) => {
+                    console.log("Key press error", error);
+                });
             }
         </script>
     </head>
