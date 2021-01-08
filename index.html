@@ -313,6 +313,9 @@
                 if(e.keyCode == 13) {
                     newLine(true);
                     fullRender = true;
+                } else if (e.keyCode == 8) {
+                    // ignore backspace
+                    return false;
                 } else {
                     if (currentLine.data.length >= LINE_LENGTH) {
                         newLine(false);
