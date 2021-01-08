@@ -35,6 +35,8 @@
                 resize: none;
                 overflow: hidden;
 
+                caret-color: transparent;
+
                 z-index: 10;
             }
 
@@ -96,7 +98,6 @@
             currentLine.data = [];
             currentLine.prompt = true;
             lines.push(currentLine);
-
 
             window.onload = function() {
                 calcFontSize();
@@ -160,8 +161,16 @@
                 }).catch((error) => {
                     console.log("Key press error", error);
                 });
-            }
 
+                document.body.ontouchend = function() {
+                    document.getElementById("input").focus();
+                }
+
+                document.body.onclick = function() {
+                    document.getElementById("input").focus();
+                }
+            }
+            
             window.onresize = function() {
                 calcFontSize();
             }
@@ -236,6 +245,13 @@
                 input.style.fontSize = fontSize + "px";
 
                 console.log("Update font size to " + fontSize + "px. Target height: " + h + ", real height: " + input.offsetHeight);
+
+
+                const width = input.getBoundingClientRect().width;
+                if(width > window.innerWidth) {
+                    const factor = (window.innerWidth / width) - .1;
+                    document.body.style.zoom = Math.floor(factor * 100) + "%";
+                }
 
                 updateContentPosition();
             }
