@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+
+        <title>pro70</title>
+        <meta name="description" content="project 70%">
+        <meta name="author" content="Tom">
+
+        <style>
+            html, body {
+                min-width: 100%;
+                min-height: 100%;
+                background-color: #111111;
+
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+
+            #container {
+                background-color: black;
+                color: lightgray;
+
+
+                width: 95%;
+                height: 100%;
+                padding: 30px;
+
+                display: flex;
+                flex-direction: row;
+                justify-content: center;
+                align-items: center;
+            }
+
+            #input {
+                background-color: transparent;
+                color: transparent;
+
+                border: 1px solid gray;
+                padding: 10px;
+
+                font-size: 20px;
+                resize: none;
+                overflow: hidden;
+
+                z-index: 10;
+            }
+
+            #content {
+                background-color: transparent;
+                color: green;
+
+                overflow: visible;
+                
+                word-wrap: break-word;
+
+                position: absolute;
+                top: 100px;
+                left: 100px;
+                width: 100px;
+                height: 100px;
+
+                font-family: 'Courier New', Courier, monospace;
+
+                z-index: 5;
+            }
+
+            .line {
+                margin: 0px;
+                padding: 0px;
+            }
+
+            .p::before {
+                content: "> ";
+            }
+
+            .np::before {
+                content: "> ";
+                color: transparent;
+            }
+
+            .character {
+                margin: 0px;
+                padding: 0px;
+            }
+        </style>
+
+        <script>
+            const LINE_LENGTH = 78;
+            const ROWS = 40;
+
+            const lineColorEven = "rgba(255, 255, 255, .1)";
+            const lineColorOdd = "transparent";
+
+            const myColor = generateColor();
+
+            var rowElements = [];
+            var rows = [];
+            var lines = [];
+            var currentLine = new Object();
+            currentLine.data = [];
+            currentLine.prompt = true;
+            lines.push(currentLine);
+
+
+            window.onload = function() {
+                calcFontSize();
+
+                const input = document.getElementById("input");
+                input.onkeypress = keyHandler
+
+                const output = document.getElementById("content");
+                for(var i=0; i<ROWS; i++) {
+                    const l = document.createElement("p");
+                    l.classList.add("line")
+                    l.id = "line" + i;
+                    output.appendChild(l);
+                    rowElements.push(l);
+
+                    if (i == 0) {
+                        l.classList.add("p");
+                        l.style.backgroundColor = lineColorEven;
+                    }
+
+                    const row = []; 
+                    for(var j=0; j<LINE_LENGTH; j++) {
+                        const c = document.createElement("span");
+                        c.classList.add("character")
+                        c.id = "character" + i + "-" + j;
+                        l.appendChild(c);
+                        row[j] = c;
+                    }
+
+                    rows.push(row); 
+                }
+
+            }
+
+            window.onresize = function() {
+                calcFontSize();
+            }
+
+
+            function calcFontSize() {
+                const input = document.getElementById("input");
+                const h = window.innerHeight - 80;
+                const fontSize = (h / 40) * .8;
+                
+                input.style.fontSize = fontSize + "px";
+
+                console.log("Update font size to " + fontSize + "px. Target height: " + h + ", real height: " + input.offsetHeight);
+
+                updateContentPosition();
+            }
+
+            function updateContentPosition() {
+                const input = document.getElementById("input");
+                
+                const rect = input.getBoundingClientRect();
+
+                var content = document.getElementById("content");
+                content.style.top = (rect.top + 10) + "px";
+                content.style.left = (rect.left + 10) + "px";
+                content.style.width = (rect.width - 20) + "px";
+                content.style.height = (rect.height - 20) + "px";
+
+                content.style.fontSize = input.style.fontSize;
+
+                console.log("Update content position to:", rect);
+            }
+
+            function render(full = true) {
+                var lineColor = lineColorEven;
+                
+                var lineCount = 0;
+                var i = (full ? 0 : lines.length - 1);
+                for(; i<lines.length; i++) {
+                    const line = lines[i];
+                    const row = rows[i];
+                    const rowElement = rowElements[i];
+
+                    if (full) {
+                        if(line.prompt) {
+                            rowElement.classList.remove("np");
+                            rowElement.classList.add("p");
+
+                            lineCount++;
+                            lineColor = (lineCount %2 == 0 ? lineColorOdd : lineColorEven);
+                        } else {
+                            rowElement.classList.remove("p");
+                            rowElement.classList.add("np");
+                        }
+
+                        rowElement.style.backgroundColor = lineColor;
+                    }
+                    
+                    for(var j=0; j<LINE_LENGTH; j++) {
+                        if(line.data.length > j) {
+                            row[j].textContent = line.data[j].key;
+                            row[j].style.color = line.data[j].color;
+                        } else {
+                            row[j].textContent = "";
+                        }
+                    }
+                }
+            }
+
+            function keyHandler(e) {
+                console.log("Key:", e);
+                
+                var fullRender = false;
+
+                if(e.keyCode == 13) {
+                    newLine(true);
+                    fullRender = true;
+                } else {
+                    if (currentLine.data.length >= LINE_LENGTH) {
+                        newLine(false);
+                        fullRender = true;
+                    }
+
+                    const key = e.key;
+                    const character = new Object();
+                    character.key = key;
+                    character.color = myColor;
+                    currentLine.data.push(character);
+                }
+
+                render(fullRender);
+
+                return false;
+            }
+
+            function generateColor() {
+                const r = 30 + Math.floor(Math.random() * Math.floor(200));
+                const g = 30 + Math.floor(Math.random() * Math.floor(200));
+                const b = 30 + Math.floor(Math.random() * Math.floor(200));
+                
+                return "rgb(" + r + ", " + g + "," +  b +")";
+            }
+
+            function newLine(show_prompt) {
+                currentLine = new Object;
+                currentLine.data = [];
+                currentLine.prompt = show_prompt
+                lines.push(currentLine);
+
+                if (lines.length > ROWS) {
+                    lines = lines.slice(lines.length - ROWS);
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <div id="content"></div>
+        <div id="container">
+            <textarea id="input" rows="40" cols="80" wrap="soft"></textarea>
+        </div>
+    </body>
+</html>
